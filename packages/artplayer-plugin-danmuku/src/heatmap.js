@@ -18,6 +18,7 @@ export default function heatmap(art, danmuku, option) {
             let $start = null;
             let $stop = null;
             let isRender = false;
+            let controlsIsShow = true;
 
             // 创建 Web Worker, 用于计算热力图的值
             const blob = new Blob([workerText], { type: 'application/javascript' });
@@ -64,7 +65,10 @@ export default function heatmap(art, danmuku, option) {
              * 渲染热力图的svg路径
              * @param {[index:number,y:any][]} points
              */
-            function renderHeatMap(points = []) {
+            function renderHeatMap(points = [], isForce = false) {
+                if (isForce) {
+                    isRender = false;
+                }
                 if (isRender) {
                     return;
                 }
@@ -142,10 +146,16 @@ export default function heatmap(art, danmuku, option) {
             art.on('destroy', () => worker.terminate());
             art.on('ready', () => renderHeatMap());
             art.on('resize', () => {
-                setTimeout(() => {
-                    isRender = false;
+                if (controlsIsShow) {
                     renderHeatMap();
-                }, 1500);
+                } else {
+                    setTimeout(() => {
+                        renderHeatMap([], true);
+                    }, 996);
+                }
+            });
+            art.on('control', (state) => {
+                controlsIsShow = state;
             });
             art.on('artplayerPluginDanmuku:loaded', () => renderHeatMap());
             art.on('artplayerPluginDanmuku:points', (points) => renderHeatMap(points));
