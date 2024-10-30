@@ -146,24 +146,17 @@ export default function heatmap(art, danmuku, option) {
             art.on('destroy', () => worker.terminate());
             art.on('ready', () => renderHeatMap());
 
-            let timeId = null;
             art.on('resize', () => {
                 if (controlsIsShow) {
                     renderHeatMap();
                 } else {
-                    timeId = setTimeout(() => {
+                    setTimeout(() => {
                         renderHeatMap([], true);
-                        timeId = null;
                     }, 800);
                 }
             });
             art.on('control', (state) => {
                 controlsIsShow = state;
-                if (controlsIsShow && timeId != null) {
-                    clearTimeout(timeId);
-                    timeId = null;
-                    renderHeatMap([], true);
-                }
             });
             art.on('artplayerPluginDanmuku:loaded', () => renderHeatMap());
             art.on('artplayerPluginDanmuku:points', (points) => renderHeatMap(points));
