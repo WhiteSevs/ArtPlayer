@@ -141,15 +141,14 @@ export default function heatmap(art, danmuku, option) {
             });
             art.on('destroy', () => worker.terminate());
             art.on('ready', () => renderHeatMap());
-            // art.on('resize', () => renderHeatMap());
-            art.on('control', (state) => {
-                if (!state) {
-                    return;
-                }
-                renderHeatMap();
+            art.on('resize', () => {
+                setTimeout(() => {
+                    isRender = false;
+                    renderHeatMap();
+                }, 1500);
             });
-            // art.on('artplayerPluginDanmuku:loaded', () => renderHeatMap());
-            // art.on('artplayerPluginDanmuku:points', (points) => renderHeatMap(points));
+            art.on('artplayerPluginDanmuku:loaded', () => renderHeatMap());
+            art.on('artplayerPluginDanmuku:points', (points) => renderHeatMap(points));
         },
     });
 }
