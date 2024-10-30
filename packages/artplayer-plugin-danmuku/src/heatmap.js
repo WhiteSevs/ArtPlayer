@@ -116,7 +116,10 @@ export default function heatmap(art, danmuku, option) {
                     }
                 }
 
-                if (points.length === 0) return;
+                if (points.length === 0) {
+                    isUpdate = false;
+                    return;
+                }
 
                 const message = {
                     id: Date.now(),
