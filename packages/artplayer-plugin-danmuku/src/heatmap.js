@@ -152,7 +152,7 @@ export default function heatmap(art, danmuku, option) {
                 } else {
                     setTimeout(() => {
                         renderHeatMap([], true);
-                    }, 800);
+                    }, 1200);
                 }
             });
             art.on('control', (state) => {
