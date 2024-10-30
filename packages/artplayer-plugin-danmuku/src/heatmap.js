@@ -17,7 +17,7 @@ export default function heatmap(art, danmuku, option) {
         mounted($heatmap) {
             let $start = null;
             let $stop = null;
-            let isUpdate = false;
+            let isRender = false;
 
             // 创建 Web Worker, 用于计算热力图的值
             const blob = new Blob([workerText], { type: 'application/javascript' });
@@ -37,7 +37,7 @@ export default function heatmap(art, danmuku, option) {
                 } catch (error) {
                     console.error(error);
                 } finally {
-                    isUpdate = true;
+                    isRender = false;
                 }
             };
             /**
@@ -61,17 +61,17 @@ export default function heatmap(art, danmuku, option) {
                 $stop = $heatmap.querySelector('#heatmap-stop');
             }
             /**
-             * 使用worker通知计算
+             * 渲染热力图的svg路径
              * @param {[index:number,y:any][]} points
              */
-            function workerUpdate(points = []) {
-                if (isUpdate) {
+            function renderHeatMap(points = []) {
+                if (isRender) {
                     return;
                 }
-                isUpdate = true;
+                isRender = true;
                 $heatmap.innerHTML = '';
                 if (!art.duration || art.option.isLive) {
-                    isUpdate = false;
+                    isRender = false;
                     return;
                 }
                 const svg = {
@@ -108,7 +108,7 @@ export default function heatmap(art, danmuku, option) {
                 }
 
                 if (points.length === 0) {
-                    isUpdate = false;
+                    isRender = false;
                     return;
                 }
 
@@ -121,26 +121,34 @@ export default function heatmap(art, danmuku, option) {
                 };
                 worker.postMessage(message);
             }
-
+            /**
+             * 更新热力图的进度
+             * @param {number} progress
+             */
+            function updateHeatMapProgress(progress) {
+                if ($start && $stop) {
+                    // 更新热力图进度
+                    $start.setAttribute('offset', `${progress * 100}%`);
+                    $stop.setAttribute('offset', `${progress * 100}%`);
+                }
+            }
             art.on('video:timeupdate', () => {
-                if ($start && $stop && !isUpdate) {
-                    $start.setAttribute('offset', `${art.played * 100}%`);
-                    $stop.setAttribute('offset', `${art.played * 100}%`);
+                if (!isRender) {
+                    updateHeatMapProgress(art.played);
                 }
             });
 
             art.on('setBar', (type, percentage) => {
-                if ($start && $stop && type === 'played' && !isUpdate) {
-                    $start.setAttribute('offset', `${percentage * 100}%`);
-                    $stop.setAttribute('offset', `${percentage * 100}%`);
+                if (type === 'played' && !isRender) {
+                    updateHeatMapProgress(percentage);
                 }
             });
 
             art.on('destroy', () => worker.terminate());
-            art.on('ready', () => workerUpdate());
-            art.on('resize', () => workerUpdate());
-            art.on('artplayerPluginDanmuku:loaded', () => workerUpdate());
-            art.on('artplayerPluginDanmuku:points', (points) => workerUpdate(points));
+            art.on('ready', () => renderHeatMap());
+            art.on('resize', () => renderHeatMap());
+            art.on('artplayerPluginDanmuku:loaded', () => renderHeatMap());
+            art.on('artplayerPluginDanmuku:points', (points) => renderHeatMap(points));
         },
     });
 }
