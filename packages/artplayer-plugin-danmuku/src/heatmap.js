@@ -141,7 +141,13 @@ export default function heatmap(art, danmuku, option) {
             });
             art.on('destroy', () => worker.terminate());
             art.on('ready', () => renderHeatMap());
-            art.on('resize', () => renderHeatMap());
+            // art.on('resize', () => renderHeatMap());
+            art.on('control', (state) => {
+                if (!state) {
+                    return;
+                }
+                renderHeatMap();
+            });
             // art.on('artplayerPluginDanmuku:loaded', () => renderHeatMap());
             // art.on('artplayerPluginDanmuku:points', (points) => renderHeatMap(points));
         },
