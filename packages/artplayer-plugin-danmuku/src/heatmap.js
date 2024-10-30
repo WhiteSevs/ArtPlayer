@@ -1,28 +1,4 @@
-const lib = {
-    map(value, inMin, inMax, outMin, outMax) {
-        return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin;
-    },
-    range(start, end, tick) {
-        const s = Math.round(start / tick) * tick;
-        return Array.from(
-            {
-                length: Math.floor((end - start) / tick),
-            },
-            (v, k) => {
-                return k * tick + s;
-            },
-        );
-    },
-};
-
-const line = (pointA, pointB) => {
-    const lengthX = pointB[0] - pointA[0];
-    const lengthY = pointB[1] - pointA[1];
-    return {
-        length: Math.sqrt(Math.pow(lengthX, 2) + Math.pow(lengthY, 2)),
-        angle: Math.atan2(lengthY, lengthX),
-    };
-};
+import workerText from 'bundle-text:./heatmapWorker';
 
 export default function heatmap(art, danmuku, option) {
     const { query } = art.constructor.utils;
@@ -44,13 +20,42 @@ export default function heatmap(art, danmuku, option) {
             let $start = null;
             let $stop = null;
 
-            function update(arg = []) {
-                $start = null;
-                $stop = null;
+            // 创建 Web Worker, 用于计算热力图的值
+            const blob = new Blob([workerText], { type: 'application/javascript' });
+            const worker = new Worker(URL.createObjectURL(blob));
+            /**
+             * 更新热力图的html
+             */
+            function updateHeatMapHTML({ width, height, opacity, path }) {
+                $heatmap.innerHTML = /*html*/ `
+                    <svg viewBox="0 0 ${width} ${height}">
+                        <defs>
+                            <linearGradient id="heatmap-solids" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:var(--art-theme);stop-opacity:${opacity}" />
+                                <stop offset="0%" style="stop-color:var(--art-theme);stop-opacity:${opacity}" id="heatmap-start" />
+                                <stop offset="0%" style="stop-color:var(--art-progress-color);stop-opacity:1" id="heatmap-stop" />
+                                <stop offset="100%" style="stop-color:var(--art-progress-color);stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path fill="url(#heatmap-solids)" d="${path}"></path>
+                    </svg>
+                `;
+            }
+            /**
+             * 更新热力图的属性
+             */
+            function updateHeatMapAttribute() {
+                $start = query('#heatmap-start', $heatmap);
+                $stop = query('#heatmap-stop', $heatmap);
+                $start.setAttribute('offset', `${art.played * 100}%`);
+                $stop.setAttribute('offset', `${art.played * 100}%`);
+            }
+            /**
+             * 使用worker通知计算
+             */
+            function workerUpdate(arg = []) {
                 $heatmap.innerHTML = '';
-
                 if (!art.duration || art.option.isLive) return;
-
                 const svg = {
                     w: $heatmap.offsetWidth,
                     h: $heatmap.offsetHeight,
@@ -89,75 +94,27 @@ export default function heatmap(art, danmuku, option) {
 
                 if (points.length === 0) return;
 
-                const lastPoint = points[points.length - 1];
-                const lastX = lastPoint[0];
-                const lastY = lastPoint[1];
-                if (lastX !== svg.w) {
-                    points.push([svg.w, lastY]);
-                }
-
-                const yPoints = points.map((point) => point[1]);
-                const yMin = Math.min(...yPoints);
-                const yMax = Math.max(...yPoints);
-                const yMid = (yMin + yMax) / 2;
-
-                for (let i = 0; i < points.length; i++) {
-                    const point = points[i];
-                    const y = point[1];
-                    point[1] = y * (y > yMid ? 1 + options.scale : 1 - options.scale) + options.minHeight;
-                }
-
-                const controlPoint = (current, previous, next, reverse) => {
-                    const p = previous || current;
-                    const n = next || current;
-                    const o = line(p, n);
-                    const flat = lib.map(Math.cos(o.angle) * options.flattening, 0, 1, 1, 0);
-                    const angle = o.angle * flat + (reverse ? Math.PI : 0);
-                    const length = o.length * options.smoothing;
-                    const x = current[0] + Math.cos(angle) * length;
-                    const y = current[1] + Math.sin(angle) * length;
-                    return [x, y];
+                const message = {
+                    id: Date.now(),
+                    type: 'heatmap-calc',
+                    svg: svg,
+                    option: option,
+                    points: points,
                 };
-
-                const bezierCommand = (point, i, a) => {
-                    const cps = controlPoint(a[i - 1], a[i - 2], point);
-                    const cpe = controlPoint(point, a[i - 1], a[i + 1], true);
-                    const close = i === a.length - 1 ? ' z' : '';
-                    return `C ${cps[0]},${cps[1]} ${cpe[0]},${cpe[1]} ${point[0]},${point[1]}${close}`;
+                worker.postMessage(message);
+                worker.onmessage = (event) => {
+                    const { data } = event;
+                    // 判断是否是当前的消息
+                    if (data.id === message.id) {
+                        updateHeatMapHTML({
+                            width: svg.w,
+                            height: svg.h,
+                            opacity: options.opacity,
+                            path: data.result,
+                        });
+                        updateHeatMapAttribute();
+                    }
                 };
-
-                const pointsPositions = points.map((e) => {
-                    const x = lib.map(e[0], options.xMin, options.xMax, 0, svg.w);
-                    const y = lib.map(e[1], options.yMin, options.yMax, svg.h, 0);
-                    return [x, y];
-                });
-
-                const pathD = pointsPositions.reduce(
-                    (acc, e, i, a) =>
-                        i === 0
-                            ? `M ${a[a.length - 1][0]},${svg.h} L ${e[0]},${svg.h} L ${e[0]},${e[1]}`
-                            : `${acc} ${bezierCommand(e, i, a)}`,
-                    '',
-                );
-
-                $heatmap.innerHTML = `
-                    <svg viewBox="0 0 ${svg.w} ${svg.h}">
-                        <defs>
-                            <linearGradient id="heatmap-solids" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" style="stop-color:var(--art-theme);stop-opacity:${options.opacity}" />
-                                <stop offset="0%" style="stop-color:var(--art-theme);stop-opacity:${options.opacity}" id="heatmap-start" />
-                                <stop offset="0%" style="stop-color:var(--art-progress-color);stop-opacity:1" id="heatmap-stop" />
-                                <stop offset="100%" style="stop-color:var(--art-progress-color);stop-opacity:1" />
-                            </linearGradient>
-                        </defs>
-                        <path fill="url(#heatmap-solids)" d="${pathD}"></path>
-                    </svg>
-                `;
-
-                $start = query('#heatmap-start', $heatmap);
-                $stop = query('#heatmap-stop', $heatmap);
-                $start.setAttribute('offset', `${art.played * 100}%`);
-                $stop.setAttribute('offset', `${art.played * 100}%`);
             }
 
             art.on('video:timeupdate', () => {
@@ -174,10 +131,11 @@ export default function heatmap(art, danmuku, option) {
                 }
             });
 
-            art.on('ready', () => update());
-            art.on('resize', () => update());
-            art.on('artplayerPluginDanmuku:loaded', () => update());
-            art.on('artplayerPluginDanmuku:points', (points) => update(points));
+            art.on('destroy', () => worker.terminate());
+            art.on('ready', () => workerUpdate());
+            art.on('resize', () => workerUpdate());
+            art.on('artplayerPluginDanmuku:loaded', () => workerUpdate());
+            art.on('artplayerPluginDanmuku:points', (points) => workerUpdate(points));
         },
     });
 }

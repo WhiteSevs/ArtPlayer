@@ -193,7 +193,7 @@ if (typeof document !== 'undefined') {
         const $style = document.createElement('style');
         $style.id = id;
         $style.textContent = style;
-        document.head.appendChild($style);
+        (document.head || document.documentElement).appendChild($style);
     }
 }
 

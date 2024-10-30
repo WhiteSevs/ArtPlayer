@@ -104,7 +104,7 @@ export function setStyleText(id, style) {
         const $style = createElement('style');
         $style.id = id;
         $style.textContent = style;
-        document.head.appendChild($style);
+        (document.head || document.documentElement).appendChild($style);
     }
 }
 

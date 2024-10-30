@@ -276,7 +276,7 @@ if (typeof document !== 'undefined') {
         const $style = document.createElement('style');
         $style.id = 'artplayer-plugin-ads';
         $style.textContent = style;
-        document.head.appendChild($style);
+        (document.head || document.documentElement).appendChild($style);
     }
 }
 
