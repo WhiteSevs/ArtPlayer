@@ -131,7 +131,6 @@ export default function heatmap(art, danmuku, option) {
 
             art.on('video:timeupdate', () => {
                 if ($start && $stop) {
-                    console.log('video:timeupdate ==> heatmap update offset');
                     $start.setAttribute('offset', `${art.played * 100}%`);
                     $stop.setAttribute('offset', `${art.played * 100}%`);
                 }
@@ -139,7 +138,6 @@ export default function heatmap(art, danmuku, option) {
 
             art.on('setBar', (type, percentage) => {
                 if ($start && $stop && type === 'played') {
-                    console.log('setBar ==> heatmap update offset');
                     $start.setAttribute('offset', `${percentage * 100}%`);
                     $stop.setAttribute('offset', `${percentage * 100}%`);
                 }
