@@ -28,13 +28,15 @@ export default function heatmap(art, danmuku, option) {
                 const { data } = event;
                 try {
                     const { workerOption, result } = data;
-                    updateHeatMapHTML({
-                        width: workerOption.svg.w,
-                        height: workerOption.svg.h,
-                        opacity: workerOption.options.opacity,
-                        path: result,
-                    });
-                    updateHeatMapAttribute();
+                    if (result) {
+                        updateHeatMapHTML({
+                            width: workerOption.svg.w,
+                            height: workerOption.svg.h,
+                            opacity: workerOption.info.opacity,
+                            path: result,
+                        });
+                        updateHeatMapAttribute();
+                    }
                 } catch (error) {
                     console.error(error);
                 } finally {
@@ -87,7 +89,7 @@ export default function heatmap(art, danmuku, option) {
                     h: $heatmap.offsetHeight,
                 };
 
-                const workerOption = {
+                const info = {
                     xMin: 0,
                     xMax: svg.w,
                     yMin: 0,
@@ -101,15 +103,15 @@ export default function heatmap(art, danmuku, option) {
                 };
 
                 if (typeof option === 'object') {
-                    Object.assign(workerOption, option);
+                    Object.assign(info, option);
                 }
 
                 if (!points.length) {
                     // 没有热力图数据，自行计算
                     const gap = art.duration / svg.w;
-                    for (let index = 0; index <= svg.w; index += workerOption.sampling) {
+                    for (let index = 0; index <= svg.w; index += info.sampling) {
                         const y = danmuku.queue.filter(
-                            ({ time }) => time > index * gap && time <= (index + workerOption.sampling) * gap,
+                            ({ time }) => time > index * gap && time <= (index + info.sampling) * gap,
                         ).length;
                         points.push([index, y]);
                     }
@@ -124,7 +126,7 @@ export default function heatmap(art, danmuku, option) {
                     id: Date.now(),
                     type: 'heatmap-calc',
                     svg: svg,
-                    workerOption: workerOption,
+                    info: info,
                     points: points,
                 };
                 worker.postMessage(message);

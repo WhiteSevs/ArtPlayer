@@ -26,8 +26,8 @@ const line = (pointA, pointB) => {
 /**
  * 计算热力图的path
  */
-const calcHeatMapPath = ({ svg, workerOption, points }) => {
-    const options = workerOption;
+const calcHeatMapPath = ({ svg, info, points }) => {
+    const options = info;
 
     const lastPoint = points[points.length - 1];
     const lastX = lastPoint[0];
