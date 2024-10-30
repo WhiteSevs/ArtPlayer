@@ -19,10 +19,27 @@ export default function heatmap(art, danmuku, option) {
         mounted($heatmap) {
             let $start = null;
             let $stop = null;
+            let isUpdate = false;
 
             // 创建 Web Worker, 用于计算热力图的值
             const blob = new Blob([workerText], { type: 'application/javascript' });
             const worker = new Worker(URL.createObjectURL(blob));
+            worker.onmessage = () => {
+                const { data } = event;
+                try {
+                    updateHeatMapHTML({
+                        width: data.workerOption.svg.w,
+                        height: data.workerOption.svg.h,
+                        opacity: data.workerOption.options.opacity,
+                        path: data.result,
+                    });
+                    updateHeatMapAttribute();
+                } catch (error) {
+                    console.error(error);
+                } finally {
+                    isUpdate = true;
+                }
+            };
             /**
              * 更新热力图的html
              */
@@ -54,8 +71,15 @@ export default function heatmap(art, danmuku, option) {
              * 使用worker通知计算
              */
             function workerUpdate(arg = []) {
+                if (isUpdate) {
+                    return;
+                }
+                isUpdate = true;
                 $heatmap.innerHTML = '';
-                if (!art.duration || art.option.isLive) return;
+                if (!art.duration || art.option.isLive) {
+                    isUpdate = false;
+                    return;
+                }
                 const svg = {
                     w: $heatmap.offsetWidth,
                     h: $heatmap.offsetHeight,
@@ -99,26 +123,15 @@ export default function heatmap(art, danmuku, option) {
                     type: 'heatmap-calc',
                     svg: svg,
                     option: option,
+                    options: options,
                     points: points,
                 };
                 worker.postMessage(message);
-                worker.onmessage = (event) => {
-                    const { data } = event;
-                    // 判断是否是当前的消息
-                    if (data.id === message.id) {
-                        updateHeatMapHTML({
-                            width: svg.w,
-                            height: svg.h,
-                            opacity: options.opacity,
-                            path: data.result,
-                        });
-                        updateHeatMapAttribute();
-                    }
-                };
             }
 
             art.on('video:timeupdate', () => {
                 if ($start && $stop) {
+                    console.log('video:timeupdate ==> heatmap update offset');
                     $start.setAttribute('offset', `${art.played * 100}%`);
                     $stop.setAttribute('offset', `${art.played * 100}%`);
                 }
@@ -126,6 +139,7 @@ export default function heatmap(art, danmuku, option) {
 
             art.on('setBar', (type, percentage) => {
                 if ($start && $stop && type === 'played') {
+                    console.log('setBar ==> heatmap update offset');
                     $start.setAttribute('offset', `${percentage * 100}%`);
                     $stop.setAttribute('offset', `${percentage * 100}%`);
                 }

@@ -27,7 +27,6 @@ const line = (pointA, pointB) => {
  * 计算热力图的path
  */
 const calcHeatMapPath = ({ svg, option, points }) => {
-
     const options = {
         xMin: 0,
         xMax: svg.w,
@@ -106,6 +105,7 @@ onmessage = (event) => {
 
     self.postMessage({
         id: data.id,
+        workerOption: data,
         result: result,
     });
 };
