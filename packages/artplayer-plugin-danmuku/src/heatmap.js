@@ -1,8 +1,6 @@
 import workerText from 'bundle-text:./heatmapWorker';
 
 export default function heatmap(art, danmuku, option) {
-    const { query } = art.constructor.utils;
-
     art.controls.add({
         name: 'heatmap',
         position: 'top',
@@ -35,7 +33,6 @@ export default function heatmap(art, danmuku, option) {
                             opacity: workerOption.info.opacity,
                             path: result,
                         });
-                        updateHeatMapAttribute();
                     }
                 } catch (error) {
                     console.error(error);
@@ -52,23 +49,16 @@ export default function heatmap(art, danmuku, option) {
                         <defs>
                             <linearGradient id="heatmap-solids" x1="0%" y1="0%" x2="100%" y2="0%">
                                 <stop offset="0%" style="stop-color:var(--art-theme);stop-opacity:${opacity}" />
-                                <stop offset="0%" style="stop-color:var(--art-theme);stop-opacity:${opacity}" id="heatmap-start" />
-                                <stop offset="0%" style="stop-color:var(--art-progress-color);stop-opacity:1" id="heatmap-stop" />
+                                <stop offset="${art.played * 100}%" style="stop-color:var(--art-theme);stop-opacity:${opacity}" id="heatmap-start" />
+                                <stop offset="${art.played * 100}%" style="stop-color:var(--art-progress-color);stop-opacity:1" id="heatmap-stop" />
                                 <stop offset="100%" style="stop-color:var(--art-progress-color);stop-opacity:1" />
                             </linearGradient>
                         </defs>
                         <path fill="url(#heatmap-solids)" d="${path}"></path>
                     </svg>
                 `;
-            }
-            /**
-             * 更新热力图的属性
-             */
-            function updateHeatMapAttribute() {
-                $start = query('#heatmap-start', $heatmap);
-                $stop = query('#heatmap-stop', $heatmap);
-                $start.setAttribute('offset', `${art.played * 100}%`);
-                $stop.setAttribute('offset', `${art.played * 100}%`);
+                $start = $heatmap.querySelector('#heatmap-start');
+                $stop = $heatmap.querySelector('#heatmap-stop');
             }
             /**
              * 使用worker通知计算
@@ -133,14 +123,14 @@ export default function heatmap(art, danmuku, option) {
             }
 
             art.on('video:timeupdate', () => {
-                if ($start && $stop) {
+                if ($start && $stop && !isUpdate) {
                     $start.setAttribute('offset', `${art.played * 100}%`);
                     $stop.setAttribute('offset', `${art.played * 100}%`);
                 }
             });
 
             art.on('setBar', (type, percentage) => {
-                if ($start && $stop && type === 'played') {
+                if ($start && $stop && type === 'played' && !isUpdate) {
                     $start.setAttribute('offset', `${percentage * 100}%`);
                     $stop.setAttribute('offset', `${percentage * 100}%`);
                 }
@@ -148,12 +138,7 @@ export default function heatmap(art, danmuku, option) {
 
             art.on('destroy', () => worker.terminate());
             art.on('ready', () => workerUpdate());
-            art.on('resize', () => {
-                setTimeout(() => {
-                    isUpdate = false;
-                    workerUpdate();
-                }, 800);
-            });
+            art.on('resize', () => workerUpdate());
             art.on('artplayerPluginDanmuku:loaded', () => workerUpdate());
             art.on('artplayerPluginDanmuku:points', (points) => workerUpdate(points));
         },
