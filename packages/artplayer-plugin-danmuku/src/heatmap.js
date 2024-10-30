@@ -152,7 +152,7 @@ export default function heatmap(art, danmuku, option) {
                 setTimeout(() => {
                     isUpdate = false;
                     workerUpdate();
-                }, 50);
+                }, 800);
             });
             art.on('artplayerPluginDanmuku:loaded', () => workerUpdate());
             art.on('artplayerPluginDanmuku:points', (points) => workerUpdate(points));
