@@ -27,11 +27,12 @@ export default function heatmap(art, danmuku, option) {
             worker.onmessage = () => {
                 const { data } = event;
                 try {
+                    const { workerOption, result } = data;
                     updateHeatMapHTML({
-                        width: data.workerOption.svg.w,
-                        height: data.workerOption.svg.h,
-                        opacity: data.workerOption.options.opacity,
-                        path: data.result,
+                        width: workerOption.svg.w,
+                        height: workerOption.svg.h,
+                        opacity: workerOption.options.opacity,
+                        path: result,
                     });
                     updateHeatMapAttribute();
                 } catch (error) {
@@ -69,8 +70,9 @@ export default function heatmap(art, danmuku, option) {
             }
             /**
              * 使用worker通知计算
+             * @param {[index:number,y:any][]} points
              */
-            function workerUpdate(arg = []) {
+            function workerUpdate(points = []) {
                 if (isUpdate) {
                     return;
                 }
@@ -85,7 +87,7 @@ export default function heatmap(art, danmuku, option) {
                     h: $heatmap.offsetHeight,
                 };
 
-                const options = {
+                const workerOption = {
                     xMin: 0,
                     xMax: svg.w,
                     yMin: 0,
@@ -99,20 +101,17 @@ export default function heatmap(art, danmuku, option) {
                 };
 
                 if (typeof option === 'object') {
-                    Object.assign(options, option);
+                    Object.assign(workerOption, option);
                 }
 
-                let points = [];
-
-                if (Array.isArray(arg) && arg.length) {
-                    points = [...arg];
-                } else {
+                if (!points.length) {
+                    // 没有热力图数据，自行计算
                     const gap = art.duration / svg.w;
-                    for (let x = 0; x <= svg.w; x += options.sampling) {
+                    for (let index = 0; index <= svg.w; index += workerOption.sampling) {
                         const y = danmuku.queue.filter(
-                            ({ time }) => time > x * gap && time <= (x + options.sampling) * gap,
+                            ({ time }) => time > index * gap && time <= (index + workerOption.sampling) * gap,
                         ).length;
-                        points.push([x, y]);
+                        points.push([index, y]);
                     }
                 }
 
@@ -125,8 +124,7 @@ export default function heatmap(art, danmuku, option) {
                     id: Date.now(),
                     type: 'heatmap-calc',
                     svg: svg,
-                    option: option,
-                    options: options,
+                    workerOption: workerOption,
                     points: points,
                 };
                 worker.postMessage(message);

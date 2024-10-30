@@ -26,23 +26,8 @@ const line = (pointA, pointB) => {
 /**
  * 计算热力图的path
  */
-const calcHeatMapPath = ({ svg, option, points }) => {
-    const options = {
-        xMin: 0,
-        xMax: svg.w,
-        yMin: 0,
-        yMax: 128,
-        scale: 0.25,
-        opacity: 0.2,
-        minHeight: Math.floor(svg.h * 0.05),
-        sampling: Math.floor(svg.w / 100),
-        smoothing: 0.2,
-        flattening: 0.2,
-    };
-
-    if (typeof option === 'object') {
-        Object.assign(options, option);
-    }
+const calcHeatMapPath = ({ svg, workerOption, points }) => {
+    const options = workerOption;
 
     const lastPoint = points[points.length - 1];
     const lastX = lastPoint[0];
@@ -99,13 +84,16 @@ const calcHeatMapPath = ({ svg, option, points }) => {
 };
 onmessage = (event) => {
     const { data } = event;
-    if (!data.id || data.type !== 'heatmap-calc') return;
-
-    const result = calcHeatMapPath(data);
-
-    self.postMessage({
+    const messageOption = {
         id: data.id,
         workerOption: data,
-        result: result,
-    });
+    };
+    if (!data.id || data.type !== 'heatmap-calc') {
+        self.postMessage(messageOption);
+        return;
+    }
+
+    const result = calcHeatMapPath(data);
+    messageOption['result'] = result;
+    self.postMessage(messageOption);
 };
