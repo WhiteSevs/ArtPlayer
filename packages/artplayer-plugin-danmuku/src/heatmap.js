@@ -132,23 +132,18 @@ export default function heatmap(art, danmuku, option) {
                     $stop.setAttribute('offset', `${progress * 100}%`);
                 }
             }
+
             art.on('video:timeupdate', () => {
-                if (!isRender) {
-                    updateHeatMapProgress(art.played);
-                }
+                updateHeatMapProgress(art.played);
             });
-
             art.on('setBar', (type, percentage) => {
-                if (type === 'played' && !isRender) {
-                    updateHeatMapProgress(percentage);
-                }
+                updateHeatMapProgress(percentage);
             });
-
             art.on('destroy', () => worker.terminate());
             art.on('ready', () => renderHeatMap());
             art.on('resize', () => renderHeatMap());
-            art.on('artplayerPluginDanmuku:loaded', () => renderHeatMap());
-            art.on('artplayerPluginDanmuku:points', (points) => renderHeatMap(points));
+            // art.on('artplayerPluginDanmuku:loaded', () => renderHeatMap());
+            // art.on('artplayerPluginDanmuku:points', (points) => renderHeatMap(points));
         },
     });
 }
