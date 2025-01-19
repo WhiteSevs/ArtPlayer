@@ -55,6 +55,7 @@
         "lerna": "^8.1.5",
         "prettier": "^3.3.2",
         "prompts": "^2.4.2",
+        "punycode": "^2.3.1",
         "servor": "^4.0.2",
         "workbox-build": "^7.1.1"
     },
@@ -63,5 +64,8 @@
     },
     "engines": {
         "node": ">= 20.0.0"
+    },
+    "devDependencies": {
+        "svgo": "^3.3.2"
     }
 }
